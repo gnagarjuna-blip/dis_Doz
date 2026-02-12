@@ -3,11 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>BIET - D'Alembert Distance Tracker</title>
+    <title>BIET - Dozen D'Alembert Master</title>
     <style>
-        :root { --bg: #f0f2f5; --dark: #121212; --accent: #3498db; --win: #27ae60; --loss: #e74c3c; --txt: #2c3e50; --col-accent: #9b59b6; }
+        :root { --bg: #f0f2f5; --dark: #121212; --accent: #3498db; --win: #27ae60; --loss: #e74c3c; --txt: #2c3e50; }
         body { font-family: 'Segoe UI', sans-serif; background: var(--bg); margin: 0; padding: 10px; display: flex; flex-direction: column; align-items: center; }
-        .container { width: 100%; max-width: 950px; background: white; padding: 20px; border-radius: 15px; box-shadow: 0 10px 30px rgba(0,0,0,0.1); }
+        .container { width: 100%; max-width: 800px; background: white; padding: 20px; border-radius: 15px; box-shadow: 0 10px 30px rgba(0,0,0,0.1); }
         
         .config-bar { display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; margin-bottom: 20px; background: #ecf0f1; padding: 15px; border-radius: 10px; }
         .config-group { display: flex; flex-direction: column; }
@@ -27,23 +27,19 @@
         .num-grid { display: grid; grid-template-columns: repeat(13, 1fr); gap: 6px; margin-bottom: 20px; }
         .n-btn { padding: 15px 0; border: none; border-radius: 5px; color: white; font-weight: bold; cursor: pointer; transition: 0.2s; }
         
-        .card { padding: 15px; border-radius: 12px; border: 2px solid #ddd; background: #fff; text-align: center; margin-bottom: 10px;}
+        .card { padding: 20px; border-radius: 12px; border: 2px solid #ddd; background: #fff; text-align: center; }
         .active-win { border-color: var(--win); background: #f0fff4; }
-        
-        .pred-section { padding: 10px; border-radius: 8px; }
-        .dz-row { display: flex; justify-content: center; gap: 10px; margin-top: 8px; }
-        .badge { flex: 1; padding: 12px; border-radius: 8px; background: var(--dark); color: white; font-size: 14px; font-weight: bold; position: relative; }
-        
-        .unit-tag { position: absolute; bottom: -8px; right: -5px; background: #f1c40f; color: black; font-size: 10px; padding: 2px 6px; border-radius: 4px; border: 1px solid black; }
-        .dz-high { background: var(--accent); }
-        .col-high { background: var(--col-accent); }
+        .dz-row { display: flex; justify-content: center; gap: 15px; margin-top: 15px; }
+        .badge { flex: 1; padding: 15px; border-radius: 10px; background: var(--dark); color: white; position: relative; font-weight: bold; }
+        .high-chance { background: var(--accent); }
+        .unit-tag { position: absolute; top: -10px; right: -5px; background: #f1c40f; color: black; font-size: 10px; padding: 2px 6px; border-radius: 4px; border: 1px solid #333; }
         .hit-badge { background: var(--win) !important; border: 2px solid gold; }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <h2 style="text-align: center; margin-top: 0;">🎰 Independent D'Alembert Tracker</h2>
+    <h2 style="text-align: center; margin-top: 0;">🎰 Distance Dozens (D'Alembert)</h2>
 
     <div class="config-bar">
         <div class="config-group"><label>Bankroll</label><input type="number" id="start-bank" value="1000" onchange="initSession()"></div>
@@ -54,15 +50,15 @@
     <div class="stats-bar">
         <div class="stat-card">Bankroll<span id="stat-curr-bank" class="stat-val">1000</span></div>
         <div class="stat-card">Session P/L<span id="stat-profit" class="stat-val">0</span></div>
-        <div class="stat-card">Doz Unit<span id="stat-doz-unit" class="stat-val" style="color:var(--accent)">10</span></div>
-        <div class="stat-card">Col Unit<span id="stat-col-unit" class="stat-val" style="color:var(--col-accent)">10</span></div>
+        <div class="stat-card">Current Unit<span id="stat-unit" class="stat-val" style="color:var(--accent)">10</span></div>
+        <div class="stat-card">Total Stake<span id="stat-stake" class="stat-val">20</span></div>
     </div>
 
     <div class="wheel-strip" id="wheelStrip"></div>
     <div class="num-grid" id="btns"><button class="n-btn g" style="grid-row: span 3;" onclick="press(0)">0</button></div>
 
     <div id="output">
-        <div class="card"><strong>Waiting for 2 spins to start...</strong></div>
+        <div class="card"><strong>Waiting for 2 spins...</strong></div>
     </div>
     
     <button onclick="initSession()" style="width:100%; padding:12px; margin-top:20px; background:#7f8c8d; color:white; border:none; border-radius:8px; cursor:pointer; font-weight:bold;">RESET SESSION</button>
@@ -72,26 +68,23 @@
     const wheel = [0, 32, 15, 19, 4, 21, 2, 25, 17, 34, 6, 27, 13, 36, 11, 30, 8, 23, 10, 5, 24, 16, 33, 1, 20, 14, 31, 9, 22, 18, 29, 7, 28, 12, 35, 3, 26];
     const reds = [1, 3, 5, 7, 9, 12, 14, 16, 18, 19, 21, 23, 25, 27, 30, 32, 34, 36];
     let spins = [];
-    let currentDozBets = [];
-    let currentColBets = [];
+    let currentBets = [];
     let currentBankroll = 0;
     let startBankroll = 0;
     let baseUnit = 0;
-    let dozMult = 1;
-    let colMult = 1;
+    let multiplier = 1;
 
     function initSession() {
         startBankroll = parseFloat(document.getElementById('start-bank').value);
         currentBankroll = startBankroll;
         baseUnit = parseFloat(document.getElementById('base-unit').value);
-        dozMult = 1;
-        colMult = 1;
+        multiplier = 1;
         spins = [];
-        currentDozBets = [];
-        currentColBets = [];
-        updateUI(null, null);
+        currentBets = [];
+        updateUI(null);
     }
 
+    // Build the number grid
     const bg = document.getElementById('btns');
     for(let i=1; i<=36; i++) {
         const b = document.createElement('button');
@@ -102,89 +95,48 @@
     }
 
     function getDozen(n) { return (n === 0) ? -1 : Math.ceil(n / 12); }
-    function getColumn(n) { 
-        if (n === 0) return -1;
-        if (n % 3 === 0) return 3;
-        if (n % 3 === 2) return 2;
-        return 1;
-    }
 
     function press(val) {
         const curDoz = getDozen(val);
-        const curCol = getColumn(val);
-        
-        if (currentDozBets.length > 0 || currentColBets.length > 0) {
-            const dozStake = (baseUnit * dozMult) * currentDozBets.length;
-            const colStake = (baseUnit * colMult) * currentColBets.length;
-            currentBankroll -= (dozStake + colStake);
-            
-            // INDEPENDENT PROGRESSION: -1 on Win, +1 on Loss
-            // Dozen logic
-            if (currentDozBets.includes(curDoz)) {
-                currentBankroll += (baseUnit * dozMult * 3);
-                if (dozMult > 1) dozMult--; // Decrement on win
-            } else {
-                dozMult++; // Increment on loss
-            }
+        const unitSize = baseUnit * multiplier;
 
-            // Column logic
-            if (currentColBets.includes(curCol)) {
-                currentBankroll += (baseUnit * colMult * 3);
-                if (colMult > 1) colMult--; // Decrement on win
+        if (currentBets.length > 0) {
+            const totalStake = unitSize * currentBets.length;
+            currentBankroll -= totalStake;
+
+            if (currentBets.includes(curDoz)) {
+                currentBankroll += (unitSize * 3);
+                // D'Alembert Win: Decrease multiplier by 1 (min 1)
+                if (multiplier > 1) multiplier--;
             } else {
-                colMult++; // Increment on loss
+                // D'Alembert Loss: Increase multiplier by 1
+                multiplier++;
             }
         }
 
         spins.push(val);
-        updateUI(curDoz, curCol);
+        updateUI(curDoz);
 
-        if ((currentBankroll - startBankroll) >= (startBankroll * (document.getElementById('target-perc').value / 100))) {
-            alert("Target Reached! Session will reset.");
+        const profit = currentBankroll - startBankroll;
+        if (profit >= (startBankroll * (document.getElementById('target-perc').value / 100))) {
+            alert("Target Reached!");
             initSession();
         }
     }
 
-    function calculateDistanceBets(type) {
-        if (spins.length < 2) return [];
-        const lastVal = spins[spins.length-1];
-        const prevVal = spins[spins.length-2];
-        const lastIdx = wheel.indexOf(lastVal);
-        const prevIdx = wheel.indexOf(prevVal);
-        const jumpCW = (lastIdx - prevIdx + 37) % 37;
-        const jumpACW = (prevIdx - lastIdx + 37) % 37;
-
-        let res1, res2;
-        if (type === 'dozen') {
-            res1 = getDozen(wheel[(lastIdx + jumpCW) % 37]);
-            res2 = getDozen(wheel[(lastIdx - jumpACW + 37) % 37]);
-        } else {
-            res1 = getColumn(wheel[(lastIdx + jumpCW) % 37]);
-            res2 = getColumn(wheel[(lastIdx - jumpACW + 37) % 37]);
-        }
-
-        let preds = [];
-        if (res1 !== -1) preds.push(res1);
-        if (res2 !== -1 && res2 !== res1) preds.push(res2);
-        if (preds.length < 2) {
-            let backup = (preds[0] || 1) + 1;
-            if (backup > 3) backup = 1;
-            preds.push(backup);
-        }
-        return preds.slice(0, 2);
-    }
-
-    function updateUI(curDoz, curCol) {
+    function updateUI(curDoz) {
+        const unitSize = baseUnit * multiplier;
         document.getElementById('stat-curr-bank').innerText = currentBankroll.toFixed(0);
         document.getElementById('stat-profit').innerText = (currentBankroll - startBankroll).toFixed(0);
-        document.getElementById('stat-doz-unit').innerText = (baseUnit * dozMult);
-        document.getElementById('stat-col-unit').innerText = (baseUnit * colMult);
+        document.getElementById('stat-unit').innerText = unitSize;
+        document.getElementById('stat-stake').innerText = (unitSize * 2);
 
         const strip = document.getElementById('wheelStrip');
         strip.innerHTML = '';
         spins.slice(-20).forEach((n, idx) => {
             const s = document.createElement('div');
-            s.className = `slot ${n===0?'g':(reds.includes(n)?'r':'b')} ${idx === (spins.slice(-20).length-1) ? 'last-hit' : ''}`;
+            const isLast = idx === (spins.slice(-20).length - 1);
+            s.className = `slot ${n===0?'g':(reds.includes(n)?'r':'b')} ${isLast ? 'last-hit' : ''}`;
             s.innerText = n;
             strip.appendChild(s);
         });
@@ -192,37 +144,41 @@
         const out = document.getElementById('output');
         if (spins.length < 2) return;
 
-        currentDozBets = calculateDistanceBets('dozen');
-        currentColBets = calculateDistanceBets('column');
+        const lastVal = spins[spins.length-1];
+        const prevVal = spins[spins.length-2];
+        const lastIdx = wheel.indexOf(lastVal);
+        const prevIdx = wheel.indexOf(prevVal);
 
-        const dozIsHit = currentDozBets.includes(curDoz);
-        const colIsHit = currentColBets.includes(curCol);
+        const jumpCW = (lastIdx - prevIdx + 37) % 37;
+        const jumpACW = (prevIdx - lastIdx + 37) % 37;
+
+        let doz1 = getDozen(wheel[(lastIdx + jumpCW) % 37]);
+        let doz2 = getDozen(wheel[(lastIdx - jumpACW + 37) % 37]);
+
+        let finalPreds = [];
+        if (doz1 !== -1) finalPreds.push(doz1);
+        if (doz2 !== -1 && doz2 !== doz1) finalPreds.push(doz2);
+
+        if (finalPreds.length < 2) {
+            let backup = (finalPreds[0] || 1) + 1;
+            if (backup > 3) backup = 1;
+            finalPreds.push(backup);
+        }
+
+        currentBets = finalPreds.slice(0, 2);
+        const isHit = currentBets.includes(curDoz);
 
         out.innerHTML = `
-            <div class="card ${dozIsHit ? 'active-win' : ''}">
-                <div class="pred-section">
-                    <strong>NEXT DOZENS (Unit: ${baseUnit * dozMult})</strong>
-                    <div class="dz-row">
-                        <div class="badge dz-high ${curDoz === currentDozBets[0] ? 'hit-badge' : ''}">
-                            DOZEN ${currentDozBets[0]} <span class="unit-tag">${baseUnit * dozMult}</span>
-                        </div>
-                        <div class="badge ${curDoz === currentDozBets[1] ? 'hit-badge' : ''}">
-                            DOZEN ${currentDozBets[1]} <span class="unit-tag">${baseUnit * dozMult}</span>
-                        </div>
+            <div class="card ${isHit ? 'active-win' : ''}">
+                <strong>PREDICTED DOZENS</strong>
+                <div class="dz-row">
+                    <div class="badge high-chance ${isHit && currentBets[0] === curDoz ? 'hit-badge' : ''}">
+                        DOZEN ${currentBets[0]}
+                        <span class="unit-tag">${unitSize}</span>
                     </div>
-                </div>
-            </div>
-
-            <div class="card ${colIsHit ? 'active-win' : ''}">
-                <div class="pred-section">
-                    <strong>NEXT COLUMNS (Unit: ${baseUnit * colMult})</strong>
-                    <div class="dz-row">
-                        <div class="badge col-high ${curCol === currentColBets[0] ? 'hit-badge' : ''}">
-                            COLUMN ${currentColBets[0]} <span class="unit-tag">${baseUnit * colMult}</span>
-                        </div>
-                        <div class="badge ${curCol === currentColBets[1] ? 'hit-badge' : ''}">
-                            COLUMN ${currentColBets[1]} <span class="unit-tag">${baseUnit * colMult}</span>
-                        </div>
+                    <div class="badge ${isHit && currentBets[1] === curDoz ? 'hit-badge' : ''}">
+                        DOZEN ${currentBets[1]}
+                        <span class="unit-tag">${unitSize}</span>
                     </div>
                 </div>
             </div>
