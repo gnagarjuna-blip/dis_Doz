@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>BIET - Dozen Profit Master</title>
+    <title>BIET - Dozen Pro Combined</title>
     <style>
         :root { --bg: #f0f2f5; --dark: #121212; --accent: #3498db; --win: #27ae60; --loss: #e74c3c; --txt: #2c3e50; }
         body { font-family: 'Segoe UI', sans-serif; background: var(--bg); margin: 0; padding: 10px; display: flex; flex-direction: column; align-items: center; }
@@ -28,17 +28,17 @@
         .num-grid { display: grid; grid-template-columns: repeat(13, 1fr); gap: 6px; margin-bottom: 20px; }
         .n-btn { padding: 15px 0; border: none; border-radius: 5px; color: white; font-weight: bold; cursor: pointer; transition: 0.2s; }
         
-        .pred-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
-        .card { padding: 15px; border-radius: 12px; border: 2px solid #ddd; background: #fff; text-align: center; }
+        .pred-box { margin-top: 10px; }
+        .card { padding: 20px; border-radius: 12px; border: 3px solid var(--accent); background: #fff; text-align: center; }
         .active-win { border-color: var(--win); background: #f0fff4; }
-        .ds-badge { display: inline-block; background: var(--txt); color: white; padding: 8px 15px; border-radius: 8px; font-weight: bold; margin-top: 10px; }
-        .hit-badge { background: var(--win); border: 2px solid gold; }
+        .dz-badge { display: inline-block; background: var(--dark); color: white; padding: 12px 25px; border-radius: 8px; font-size: 20px; font-weight: bold; margin: 10px; border: 2px solid transparent; }
+        .hit-badge { background: var(--win); border-color: gold; box-shadow: 0 0 10px rgba(39, 174, 96, 0.5); }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <h2 style="text-align: center; margin-top: 0;">🎰 Dozens Profit Target</h2>
+    <h2 style="text-align: center; margin-top: 0;">🎰 Combined Dozen Master</h2>
 
     <div class="config-bar">
         <div class="config-group">
@@ -68,7 +68,11 @@
         <button class="n-btn g" style="grid-row: span 3;" onclick="press(0)">0</button>
     </div>
 
-    <div class="pred-grid" id="output"></div>
+    <div class="pred-box" id="output">
+        <div class="card">
+            <strong>Waiting for 2 spins...</strong>
+        </div>
+    </div>
     
     <button onclick="initSession()" style="width:100%; padding:12px; margin-top:20px; background:#7f8c8d; color:white; border:none; border-radius:8px; cursor:pointer; font-weight:bold;">MANUAL RESET</button>
 </div>
@@ -78,7 +82,7 @@
     const reds = [1, 3, 5, 7, 9, 12, 14, 16, 18, 19, 21, 23, 25, 27, 30, 32, 34, 36];
     
     let spins = [];
-    let lastPreds = { cw: [], acw: [] };
+    let currentCombinedPreds = [];
     let currentBankroll = 0;
     let startBankroll = 0;
     let baseUnit = 0;
@@ -92,7 +96,7 @@
         targetPercent = parseFloat(document.getElementById('target-perc').value);
         multiplier = 1;
         spins = [];
-        lastPreds = { cw: [], acw: [] };
+        currentCombinedPreds = [];
         updateUI(null);
     }
 
@@ -105,7 +109,6 @@
         bg.appendChild(b);
     }
 
-    // UPDATED: Logic for Dozens (1-12, 13-24, 25-36)
     function getDozen(n) { 
         if (n === 0) return -1; 
         return Math.ceil(n / 12); 
@@ -113,19 +116,18 @@
 
     function press(val) {
         const curDoz = getDozen(val);
-        const uniqueBets = [...new Set([...lastPreds.cw, ...lastPreds.acw])];
         const stakePerDoz = baseUnit * multiplier;
 
-        if (uniqueBets.length > 0) {
-            // Deduct total bet
-            currentBankroll -= (uniqueBets.length * stakePerDoz);
+        if (currentCombinedPreds.length > 0) {
+            // Deduct total bet based on number of predicted dozens
+            currentBankroll -= (currentCombinedPreds.length * stakePerDoz);
 
-            if (uniqueBets.includes(curDoz)) {
-                // WIN: Payout is 2:1 (Stake * 3)
+            if (currentCombinedPreds.includes(curDoz)) {
+                // WIN
                 currentBankroll += (stakePerDoz * 3);
-                multiplier = Math.max(1, multiplier - 1);
+                multiplier = 1; // Reset multiplier on win for Dozens strategy
             } else {
-                // LOSS (Happens if wrong Dozen or 0 hit)
+                // LOSS
                 multiplier++;
             }
         }
@@ -133,11 +135,10 @@
         spins.push(val);
         updateUI(curDoz);
 
-        // Check Dynamic Profit Target
         const profit = currentBankroll - startBankroll;
         const targetAmount = startBankroll * (targetPercent / 100);
         if (profit >= targetAmount) {
-            alert(`🎯 Target of ${targetPercent}% reached! Resetting...`);
+            alert(`🎯 Target reached! Resetting...`);
             initSession();
         }
     }
@@ -162,28 +163,41 @@
         });
 
         const out = document.getElementById('output');
-        out.innerHTML = '';
-        if (spins.length < 2) return;
+        if (spins.length < 2) {
+            out.innerHTML = `<div class="card"><strong>Waiting for ${2 - spins.length} more spins...</strong></div>`;
+            return;
+        }
 
         const lastIdx = wheel.indexOf(spins[spins.length-1]);
         const prevIdx = wheel.indexOf(spins[spins.length-2]);
         const jumpCW = (lastIdx - prevIdx + 37) % 37;
         const jumpACW = (prevIdx - lastIdx + 37) % 37;
 
-        // UPDATED: Prediction logic to pull Dozens based on wheel movement
-        const dozCW = [...new Set([getDozen(wheel[(lastIdx + jumpCW) % 37]), getDozen(wheel[(lastIdx + jumpCW + 1) % 37])])].filter(d => d !== -1);
-        const dozACW = [...new Set([getDozen(wheel[(lastIdx - jumpACW + 37) % 37]), getDozen(wheel[(lastIdx - jumpACW - 1 + 37) % 37])])].filter(d => d !== -1);
+        // Collect all potential targets from both directions
+        let potentialDozens = [
+            getDozen(wheel[(lastIdx + jumpCW) % 37]),
+            getDozen(wheel[(lastIdx - jumpACW + 37) % 37])
+        ];
 
-        lastPreds = { cw: dozCW, acw: dozACW };
+        // Filter out 0s and keep only unique values, limit to 2 dozens
+        currentCombinedPreds = [...new Set(potentialDozens)].filter(d => d !== -1).slice(0, 2);
 
-        [{n:"Clockwise", d:dozCW}, {n:"Anti-Clockwise", d:dozACW}].forEach(r => {
-            const isHit = r.d.includes(curDoz);
-            const card = document.createElement('div');
-            card.className = `card ${isHit ? 'active-win' : ''}`;
-            card.innerHTML = `<strong>${r.n} Shift</strong><br>` + 
-                r.d.map(d => `<div class="ds-badge ${isHit && d === curDoz ? 'hit-badge' : ''}">Dozen ${d}</div>`).join(' ');
-            out.appendChild(card);
-        });
+        const isHit = currentCombinedPreds.includes(curDoz);
+        out.innerHTML = `
+            <div class="card ${isHit ? 'active-win' : ''}">
+                <strong style="font-size: 1.2rem; color: var(--txt);">PREDICTED DOZENS</strong><br>
+                <div style="margin-top:10px;">
+                    ${currentCombinedPreds.map(d => `
+                        <div class="dz-badge ${isHit && d === curDoz ? 'hit-badge' : ''}">
+                            DOZEN ${d}
+                        </div>
+                    `).join('')}
+                </div>
+                <p style="font-size: 0.9rem; color: #666; margin-top: 10px;">
+                    ${isHit ? '✨ HIT! Progression Reset ✨' : 'Bet on the numbers above'}
+                </p>
+            </div>
+        `;
     }
 
     initSession();
