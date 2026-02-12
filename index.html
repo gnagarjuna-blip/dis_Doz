@@ -3,9 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>BIET - Distance Dozen Master</title>
+    <title>BIET - Distance Master (Dozens & Columns)</title>
     <style>
-        :root { --bg: #f0f2f5; --dark: #121212; --accent: #3498db; --win: #27ae60; --loss: #e74c3c; --txt: #2c3e50; }
+        :root { --bg: #f0f2f5; --dark: #121212; --accent: #3498db; --win: #27ae60; --loss: #e74c3c; --txt: #2c3e50; --col-accent: #9b59b6; }
         body { font-family: 'Segoe UI', sans-serif; background: var(--bg); margin: 0; padding: 10px; display: flex; flex-direction: column; align-items: center; }
         .container { width: 100%; max-width: 950px; background: white; padding: 20px; border-radius: 15px; box-shadow: 0 10px 30px rgba(0,0,0,0.1); }
         
@@ -27,19 +27,23 @@
         .num-grid { display: grid; grid-template-columns: repeat(13, 1fr); gap: 6px; margin-bottom: 20px; }
         .n-btn { padding: 15px 0; border: none; border-radius: 5px; color: white; font-weight: bold; cursor: pointer; transition: 0.2s; }
         
-        .card { padding: 20px; border-radius: 12px; border: 2px solid #ddd; background: #fff; text-align: center; }
+        .card { padding: 20px; border-radius: 12px; border: 2px solid #ddd; background: #fff; text-align: center; margin-bottom: 10px;}
         .active-win { border-color: var(--win); background: #f0fff4; }
-        .dz-row { display: flex; justify-content: center; gap: 15px; margin-top: 15px; }
-        .dz-badge { flex: 1; padding: 15px; border-radius: 10px; background: var(--dark); color: white; }
-        .high-chance { background: var(--accent); position: relative; }
-        .high-chance::after { content: "HIGH"; position: absolute; top: -10px; left: 50%; transform: translateX(-50%); background: #f1c40f; color: black; font-size: 10px; padding: 2px 6px; border-radius: 4px; font-weight: 800; }
+        
+        .pred-section { margin-top: 15px; padding-top: 10px; border-top: 1px solid #eee; }
+        .dz-row { display: flex; justify-content: center; gap: 10px; margin-top: 10px; }
+        .badge { flex: 1; padding: 12px; border-radius: 8px; background: var(--dark); color: white; font-size: 14px; font-weight: bold; }
+        
+        .dz-high { background: var(--accent); position: relative; }
+        .col-high { background: var(--col-accent); position: relative; }
+        .badge-label { position: absolute; top: -8px; left: 50%; transform: translateX(-50%); background: #f1c40f; color: black; font-size: 9px; padding: 1px 5px; border-radius: 4px; }
         .hit-badge { background: var(--win) !important; border: 2px solid gold; }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <h2 style="text-align: center; margin-top: 0;">🎰 Distance-Based Dozens</h2>
+    <h2 style="text-align: center; margin-top: 0;">🎰 Distance Master: Dozens & Columns</h2>
 
     <div class="config-bar">
         <div class="config-group"><label>Bankroll</label><input type="number" id="start-bank" value="1000" onchange="initSession()"></div>
@@ -50,7 +54,7 @@
     <div class="stats-bar">
         <div class="stat-card">Bankroll<span id="stat-curr-bank" class="stat-val">1000</span></div>
         <div class="stat-card">Session P/L<span id="stat-profit" class="stat-val">0</span></div>
-        <div class="stat-card">Total Bet<span id="stat-stake" class="stat-val">20</span></div>
+        <div class="stat-card">Next Total Bet<span id="stat-stake" class="stat-val">40</span></div>
         <div class="stat-card">Target<span id="stat-target" class="stat-val profit">+100</span></div>
     </div>
 
@@ -58,7 +62,7 @@
     <div class="num-grid" id="btns"><button class="n-btn g" style="grid-row: span 3;" onclick="press(0)">0</button></div>
 
     <div id="output">
-        <div class="card"><strong>Waiting for 2 spins...</strong></div>
+        <div class="card"><strong>Waiting for 2 spins to calculate distances...</strong></div>
     </div>
     
     <button onclick="initSession()" style="width:100%; padding:12px; margin-top:20px; background:#7f8c8d; color:white; border:none; border-radius:8px; cursor:pointer; font-weight:bold;">RESET SESSION</button>
@@ -68,7 +72,8 @@
     const wheel = [0, 32, 15, 19, 4, 21, 2, 25, 17, 34, 6, 27, 13, 36, 11, 30, 8, 23, 10, 5, 24, 16, 33, 1, 20, 14, 31, 9, 22, 18, 29, 7, 28, 12, 35, 3, 26];
     const reds = [1, 3, 5, 7, 9, 12, 14, 16, 18, 19, 21, 23, 25, 27, 30, 32, 34, 36];
     let spins = [];
-    let currentBets = [];
+    let currentDozBets = [];
+    let currentColBets = [];
     let currentBankroll = 0;
     let startBankroll = 0;
     let baseUnit = 0;
@@ -80,8 +85,9 @@
         baseUnit = parseFloat(document.getElementById('base-unit').value);
         multiplier = 1;
         spins = [];
-        currentBets = [];
-        updateUI(null);
+        currentDozBets = [];
+        currentColBets = [];
+        updateUI(null, null);
     }
 
     const bg = document.getElementById('btns');
@@ -94,15 +100,32 @@
     }
 
     function getDozen(n) { return (n === 0) ? -1 : Math.ceil(n / 12); }
+    function getColumn(n) { 
+        if (n === 0) return -1;
+        if (n % 3 === 0) return 3;
+        if (n % 3 === 2) return 2;
+        return 1;
+    }
 
     function press(val) {
         const curDoz = getDozen(val);
-        const totalStake = (baseUnit * multiplier) * currentBets.length;
+        const curCol = getColumn(val);
+        
+        // Total units bet (2 doz + 2 col = 4 units per multiplier)
+        const totalUnits = currentDozBets.length + currentColBets.length;
+        const totalStake = (baseUnit * multiplier) * totalUnits;
 
-        if (currentBets.length > 0) {
+        if (totalUnits > 0) {
             currentBankroll -= totalStake;
-            if (currentBets.includes(curDoz)) {
-                currentBankroll += (baseUnit * multiplier * 3);
+            
+            // Check Dozen Win
+            const dozWin = currentDozBets.includes(curDoz);
+            const colWin = currentColBets.includes(curCol);
+
+            if (dozWin) currentBankroll += (baseUnit * multiplier * 3);
+            if (colWin) currentBankroll += (baseUnit * multiplier * 3);
+
+            if (dozWin || colWin) {
                 multiplier = 1;
             } else {
                 multiplier++;
@@ -110,25 +133,57 @@
         }
 
         spins.push(val);
-        updateUI(curDoz);
+        updateUI(curDoz, curCol);
 
         const profit = currentBankroll - startBankroll;
         if (profit >= (startBankroll * (document.getElementById('target-perc').value / 100))) {
-            alert("Target Reached!");
+            alert("Target Reached! Session Reset.");
             initSession();
         }
     }
 
-    function updateUI(curDoz) {
+    function calculateDistanceBets(type) {
+        if (spins.length < 2) return [];
+        const lastVal = spins[spins.length-1];
+        const prevVal = spins[spins.length-2];
+        const lastIdx = wheel.indexOf(lastVal);
+        const prevIdx = wheel.indexOf(prevVal);
+
+        const jumpCW = (lastIdx - prevIdx + 37) % 37;
+        const jumpACW = (prevIdx - lastIdx + 37) % 37;
+
+        let res1, res2;
+        if (type === 'dozen') {
+            res1 = getDozen(wheel[(lastIdx + jumpCW) % 37]);
+            res2 = getDozen(wheel[(lastIdx - jumpACW + 37) % 37]);
+        } else {
+            res1 = getColumn(wheel[(lastIdx + jumpCW) % 37]);
+            res2 = getColumn(wheel[(lastIdx - jumpACW + 37) % 37]);
+        }
+
+        let preds = [];
+        if (res1 !== -1) preds.push(res1);
+        if (res2 !== -1 && res2 !== res1) preds.push(res2);
+
+        // Fill to 2 if needed
+        if (preds.length < 2) {
+            let backup = (preds[0] || 1) + 1;
+            if (backup > 3) backup = 1;
+            preds.push(backup);
+        }
+        return preds.slice(0, 2);
+    }
+
+    function updateUI(curDoz, curCol) {
         document.getElementById('stat-curr-bank').innerText = currentBankroll.toFixed(0);
         document.getElementById('stat-profit').innerText = (currentBankroll - startBankroll).toFixed(0);
-        document.getElementById('stat-stake').innerText = (baseUnit * multiplier * 2);
+        document.getElementById('stat-stake').innerText = (baseUnit * multiplier * 4);
 
         const strip = document.getElementById('wheelStrip');
         strip.innerHTML = '';
-        wheel.forEach(n => {
+        spins.slice(-20).forEach((n, idx) => {
             const s = document.createElement('div');
-            s.className = `slot ${n===0?'g':(reds.includes(n)?'r':'b')} ${n===spins[spins.length-1]?'last-hit':''}`;
+            s.className = `slot ${n===0?'g':(reds.includes(n)?'r':'b')} ${idx === (spins.slice(-20).length-1) ? 'last-hit' : ''}`;
             s.innerText = n;
             strip.appendChild(s);
         });
@@ -136,43 +191,35 @@
         const out = document.getElementById('output');
         if (spins.length < 2) return;
 
-        const lastVal = spins[spins.length-1];
-        const prevVal = spins[spins.length-2];
-        const lastIdx = wheel.indexOf(lastVal);
-        const prevIdx = wheel.indexOf(prevVal);
+        currentDozBets = calculateDistanceBets('dozen');
+        currentColBets = calculateDistanceBets('column');
 
-        // Distance Logic (Jump)
-        const jumpCW = (lastIdx - prevIdx + 37) % 37;
-        const jumpACW = (prevIdx - lastIdx + 37) % 37;
-
-        // Calculate Dozens based on distance
-        let dozCW = getDozen(wheel[(lastIdx + jumpCW) % 37]);
-        let dozACW = getDozen(wheel[(lastIdx - jumpACW + 37) % 37]);
-
-        // Validation: No zeros and must have 2 distinct dozens
-        let finalPreds = [];
-        if (dozCW !== -1) finalPreds.push(dozCW);
-        if (dozACW !== -1 && dozACW !== dozCW) finalPreds.push(dozACW);
-
-        // Compulsorily fill to 2 dozens if they overlap or zero was hit
-        if (finalPreds.length < 2) {
-            let backup = (finalPreds[0] || 1) + 1;
-            if (backup > 3) backup = 1;
-            finalPreds.push(backup);
-        }
-
-        currentBets = finalPreds.slice(0, 2);
-        const isHit = currentBets.includes(curDoz);
+        const dozHit = currentDozBets.includes(curDoz);
+        const colHit = currentColBets.includes(curCol);
 
         out.innerHTML = `
-            <div class="card ${isHit ? 'active-win' : ''}">
-                <strong>PREDICTED DOZENS</strong>
-                <div class="dz-row">
-                    <div class="dz-badge high-chance ${isHit && currentBets[0] === curDoz ? 'hit-badge' : ''}">
-                        DOZEN ${currentBets[0]}
+            <div class="card ${(dozHit || colHit) ? 'active-win' : ''}">
+                <div class="pred-section">
+                    <strong>PREDICTED DOZENS</strong>
+                    <div class="dz-row">
+                        <div class="badge dz-high ${dozHit && currentDozBets[0] === curDoz ? 'hit-badge' : ''}">
+                            <span class="badge-label">HIGH</span> DOZEN ${currentDozBets[0]}
+                        </div>
+                        <div class="badge ${dozHit && currentDozBets[1] === curDoz ? 'hit-badge' : ''}">
+                            DOZEN ${currentDozBets[1]}
+                        </div>
                     </div>
-                    <div class="dz-badge ${isHit && currentBets[1] === curDoz ? 'hit-badge' : ''}">
-                        DOZEN ${currentBets[1]}
+                </div>
+
+                <div class="pred-section">
+                    <strong>PREDICTED COLUMNS</strong>
+                    <div class="dz-row">
+                        <div class="badge col-high ${colHit && currentColBets[0] === curCol ? 'hit-badge' : ''}">
+                            <span class="badge-label">HIGH</span> COLUMN ${currentColBets[0]}
+                        </div>
+                        <div class="badge ${colHit && currentColBets[1] === curCol ? 'hit-badge' : ''}">
+                            COLUMN ${currentColBets[1]}
+                        </div>
                     </div>
                 </div>
             </div>
