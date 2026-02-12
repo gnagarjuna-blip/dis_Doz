@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>BIET - Independent Distance Master</title>
+    <title>BIET - D'Alembert Distance Tracker</title>
     <style>
         :root { --bg: #f0f2f5; --dark: #121212; --accent: #3498db; --win: #27ae60; --loss: #e74c3c; --txt: #2c3e50; --col-accent: #9b59b6; }
         body { font-family: 'Segoe UI', sans-serif; background: var(--bg); margin: 0; padding: 10px; display: flex; flex-direction: column; align-items: center; }
@@ -28,9 +28,9 @@
         .n-btn { padding: 15px 0; border: none; border-radius: 5px; color: white; font-weight: bold; cursor: pointer; transition: 0.2s; }
         
         .card { padding: 15px; border-radius: 12px; border: 2px solid #ddd; background: #fff; text-align: center; margin-bottom: 10px;}
-        .active-win { border-color: var(--win); }
+        .active-win { border-color: var(--win); background: #f0fff4; }
         
-        .pred-section { margin-top: 10px; padding: 10px; border-radius: 8px; background: #f8f9fa; }
+        .pred-section { padding: 10px; border-radius: 8px; }
         .dz-row { display: flex; justify-content: center; gap: 10px; margin-top: 8px; }
         .badge { flex: 1; padding: 12px; border-radius: 8px; background: var(--dark); color: white; font-size: 14px; font-weight: bold; position: relative; }
         
@@ -43,7 +43,7 @@
 <body>
 
 <div class="container">
-    <h2 style="text-align: center; margin-top: 0;">🎰 Independent Distance Tracker</h2>
+    <h2 style="text-align: center; margin-top: 0;">🎰 Independent D'Alembert Tracker</h2>
 
     <div class="config-bar">
         <div class="config-group"><label>Bankroll</label><input type="number" id="start-bank" value="1000" onchange="initSession()"></div>
@@ -62,7 +62,7 @@
     <div class="num-grid" id="btns"><button class="n-btn g" style="grid-row: span 3;" onclick="press(0)">0</button></div>
 
     <div id="output">
-        <div class="card"><strong>Waiting for 2 spins...</strong></div>
+        <div class="card"><strong>Waiting for 2 spins to start...</strong></div>
     </div>
     
     <button onclick="initSession()" style="width:100%; padding:12px; margin-top:20px; background:#7f8c8d; color:white; border:none; border-radius:8px; cursor:pointer; font-weight:bold;">RESET SESSION</button>
@@ -114,25 +114,25 @@
         const curCol = getColumn(val);
         
         if (currentDozBets.length > 0 || currentColBets.length > 0) {
-            // Deduct stakes independently
             const dozStake = (baseUnit * dozMult) * currentDozBets.length;
             const colStake = (baseUnit * colMult) * currentColBets.length;
             currentBankroll -= (dozStake + colStake);
             
+            // INDEPENDENT PROGRESSION: -1 on Win, +1 on Loss
             // Dozen logic
             if (currentDozBets.includes(curDoz)) {
                 currentBankroll += (baseUnit * dozMult * 3);
-                dozMult = 1;
+                if (dozMult > 1) dozMult--; // Decrement on win
             } else {
-                dozMult++;
+                dozMult++; // Increment on loss
             }
 
             // Column logic
             if (currentColBets.includes(curCol)) {
                 currentBankroll += (baseUnit * colMult * 3);
-                colMult = 1;
+                if (colMult > 1) colMult--; // Decrement on win
             } else {
-                colMult++;
+                colMult++; // Increment on loss
             }
         }
 
@@ -140,7 +140,7 @@
         updateUI(curDoz, curCol);
 
         if ((currentBankroll - startBankroll) >= (startBankroll * (document.getElementById('target-perc').value / 100))) {
-            alert("Target Reached!");
+            alert("Target Reached! Session will reset.");
             initSession();
         }
     }
@@ -195,30 +195,33 @@
         currentDozBets = calculateDistanceBets('dozen');
         currentColBets = calculateDistanceBets('column');
 
+        const dozIsHit = currentDozBets.includes(curDoz);
+        const colIsHit = currentColBets.includes(curCol);
+
         out.innerHTML = `
-            <div class="card ${currentDozBets.includes(curDoz) ? 'active-win' : ''}">
+            <div class="card ${dozIsHit ? 'active-win' : ''}">
                 <div class="pred-section">
-                    <strong>DOZEN PREDICTION (Unit: ${baseUnit * dozMult})</strong>
+                    <strong>NEXT DOZENS (Unit: ${baseUnit * dozMult})</strong>
                     <div class="dz-row">
                         <div class="badge dz-high ${curDoz === currentDozBets[0] ? 'hit-badge' : ''}">
-                            D${currentDozBets[0]} <span class="unit-tag">${baseUnit * dozMult}</span>
+                            DOZEN ${currentDozBets[0]} <span class="unit-tag">${baseUnit * dozMult}</span>
                         </div>
                         <div class="badge ${curDoz === currentDozBets[1] ? 'hit-badge' : ''}">
-                            D${currentDozBets[1]} <span class="unit-tag">${baseUnit * dozMult}</span>
+                            DOZEN ${currentDozBets[1]} <span class="unit-tag">${baseUnit * dozMult}</span>
                         </div>
                     </div>
                 </div>
             </div>
 
-            <div class="card ${currentColBets.includes(curCol) ? 'active-win' : ''}">
-                <div class="pred-section" style="border-top: none;">
-                    <strong>COLUMN PREDICTION (Unit: ${baseUnit * colMult})</strong>
+            <div class="card ${colIsHit ? 'active-win' : ''}">
+                <div class="pred-section">
+                    <strong>NEXT COLUMNS (Unit: ${baseUnit * colMult})</strong>
                     <div class="dz-row">
                         <div class="badge col-high ${curCol === currentColBets[0] ? 'hit-badge' : ''}">
-                            C${currentColBets[0]} <span class="unit-tag">${baseUnit * colMult}</span>
+                            COLUMN ${currentColBets[0]} <span class="unit-tag">${baseUnit * colMult}</span>
                         </div>
                         <div class="badge ${curCol === currentColBets[1] ? 'hit-badge' : ''}">
-                            C${currentColBets[1]} <span class="unit-tag">${baseUnit * colMult}</span>
+                            COLUMN ${currentColBets[1]} <span class="unit-tag">${baseUnit * colMult}</span>
                         </div>
                     </div>
                 </div>
